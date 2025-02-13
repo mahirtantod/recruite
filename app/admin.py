@@ -1,8 +1,14 @@
+import logging
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from app.models import db, Job, Candidate
-from datetime import datetime
+from datetime import datetime, timedelta
+import secrets
 
 admin = Blueprint('admin', __name__, url_prefix='/admin')
+
+# Set up logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)  # Set the logging level
 
 @admin.route('/')
 def index():
@@ -14,22 +20,28 @@ def index():
                          active_jobs=active_jobs,
                          total_candidates=total_candidates)
 
-@admin.route('/new_job', methods=['GET', 'POST'])
+@admin.route('/jobs/new', methods=['GET', 'POST'])
 def new_job():
     if request.method == 'POST':
-        title = request.form.get('title')
-        description = request.form.get('description')
-        days_valid = int(request.form.get('days_valid', 10))
-        
-        job = Job(title=title, description=description)
-        job.generate_link(days_valid)
-        
-        db.session.add(job)
-        db.session.commit()
-        
-        flash('Job created successfully!', 'success')
-        return redirect(url_for('admin.view_job', job_id=job.id))
-    
+        try:
+            # Create a new job
+            job = Job(
+                title=request.form.get('title'),
+                description=request.form.get('description'),
+                link_hash=secrets.token_urlsafe(16),
+                start_date=datetime.utcnow(),
+                end_date=datetime.utcnow() + timedelta(days=30),  # Example end date
+                is_active=True
+            )
+            db.session.add(job)
+            db.session.commit()  # Ensure this line is present
+            flash('Job created successfully!', 'success')
+            return redirect(url_for('admin.index'))
+        except Exception as e:
+            logger.error(f"Error creating job: {str(e)}")
+            db.session.rollback()  # Rollback on error
+            flash('Error creating job. Please try again.', 'error')
+
     return render_template('admin/new_job.html')
 
 @admin.route('/view_job/<int:job_id>')
