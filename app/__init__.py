@@ -1,10 +1,12 @@
 from flask import Flask, send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
+from flask_migrate import Migrate
 import os
 from config import Config
 
 db = SQLAlchemy()
+migrate = Migrate()  # Initialize Flask-Migrate
 
 def create_app():
     app = Flask(__name__,
@@ -25,6 +27,7 @@ def create_app():
     
     CORS(app)
     db.init_app(app)
+    migrate.init_app(app, db)  # Initialize Flask-Migrate with app and db
     
     # Add route to serve uploaded files
     @app.route('/uploads/<path:filename>')
