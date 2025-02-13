@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate List - RecruitEase</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-r from-blue-50 to-indigo-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Candidates List</h2>
+        <div class="bg-white rounded-lg shadow-lg overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+                        <tr>
+                            <th class="px-6 py-3 text-left">ID</th>
+                            <th class="px-6 py-3 text-left">Name</th>
+                            <th class="px-6 py-3 text-left">Email</th>
+                            <th class="px-6 py-3 text-left">Education</th>
+                            <th class="px-6 py-3 text-left">CGPA</th>
+                            <th class="px-6 py-3 text-left">Skills</th>
+                            <th class="px-6 py-3 text-left">Projects</th>
+                            <th class="px-6 py-3 text-left">Achievements</th>
+                            <th class="px-6 py-3 text-left">Video</th>
+                            <th class="px-6 py-3 text-left">Created At</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200">
+                        {% for candidate in candidates %}
+                        <tr class="hover:bg-gray-50 transition-colors duration-200">
+                            <td class="px-6 py-4">{{ candidate.id }}</td>
+                            <td class="px-6 py-4">
+                                {{ candidate.first_name }}
+                                {% if candidate.middle_name %}
+                                    {{ candidate.middle_name }}
+                                {% endif %}
+                                {{ candidate.last_name }}
+                            </td>
+                            <td class="px-6 py-4">{{ candidate.email }}</td>
+                            <td class="px-6 py-4">{{ candidate.education }}</td>
+                            <td class="px-6 py-4">{{ candidate.cgpa }}</td>
+                            <td class="px-6 py-4">{{ candidate.skills }}</td>
+                            <td class="px-6 py-4">{{ candidate.projects }}</td>
+                            <td class="px-6 py-4">{{ candidate.achievements or 'N/A' }}</td>
+                            <td class="px-6 py-4">
+                                {% if candidate.video_path %}
+                                <video width="200" controls class="rounded-lg shadow">
+                                    <source src="{{ candidate.video_path }}" type="video/webm">
+                                    Your browser does not support the video tag.
+                                </video>
+                                {% else %}
+                                <span class="text-gray-400">No video</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4">{{ candidate.created_at }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

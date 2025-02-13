@@ -1,0 +1,28 @@
+{% extends "base.html" %} 
+
+{% block content %}
+<div class="container mt-4">
+    <h1>Create New Job Posting</h1>
+    <form method="POST" class="mt-4">
+        <div class="mb-3">
+            <label for="title" class="form-label">Job Title</label>
+            <input type="text" class="form-control" id="title" name="title" required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="description" class="form-label">Job Description</label>
+            <textarea class="form-control" id="description" name="description" rows="5" required></textarea>
+        </div>
+        
+        <div class="mb-3">
+            <label for="days_valid" class="form-label">Link Valid for (days)</label>
+            <input type="number" class="form-control" id="days_valid" name="days_valid" value="10" min="1" max="365" required>
+        </div>
+        
+        <div class="mb-3">
+            <button type="submit" class="btn btn-primary">Create Job</button>
+            <a href="{{ url_for('admin.index') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

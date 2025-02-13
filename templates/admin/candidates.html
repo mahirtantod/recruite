@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>RecruitEase Admin - Candidates</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.datatables.net/1.11.5/css/jquery.dataTables.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-3xl font-bold mb-8">Candidate Applications</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <table id="candidates-table" class="w-full">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Mobile</th>
+                        <th>Education</th>
+                        <th>Experience</th>
+                        <th>Skills</th>
+                        <th>Resume</th>
+                        <th>Video</th>
+                        <th>Submitted At</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for candidate in candidates %}
+                    <tr>
+                        <td>{{ candidate.id }}</td>
+                        <td>{{ candidate.first_name }} {{ candidate.last_name }}</td>
+                        <td>{{ candidate.personal_email }}</td>
+                        <td>{{ candidate.mobile_no }}</td>
+                        <td>{{ candidate.highest_educational_qualifications }}</td>
+                        <td>{{ candidate.total_experience }} years</td>
+                        <td>{{ candidate.primary_skills }}</td>
+                        <td>
+                            {% if candidate.resume_attachments %}
+                            <a href="/uploads/{{ candidate.resume_attachments }}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if candidate.self_introduction_video %}
+                            <a href="/uploads/{{ candidate.self_introduction_video }}" target="_blank" class="text-blue-600 hover:text-blue-800">View</a>
+                            {% endif %}
+                        </td>
+                        <td>{{ candidate.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#candidates-table').DataTable({
+                order: [[0, 'desc']],
+                pageLength: 25,
+                responsive: true
+            });
+        });
+    </script>
+</body>
+</html>
