@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RecruitEase - Interactive Recruitment Chatbot</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        #background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .chat-container {
+            height: calc(100vh - 350px);
+            overflow-y: auto;
+            scroll-behavior: smooth;
+            min-height: 300px;
+        }
+
+        .message {
+            max-width: 80%;
+            animation: fadeIn 0.3s ease-in;
+            backdrop-filter: blur(8px);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-message {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+        }
+
+        .bot-message {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(240, 240, 240, 0.9) 100%);
+        }
+
+        .video-container {
+            transition: all 0.3s ease-in-out;
+            backdrop-filter: blur(8px);
+            max-height: 300px;
+            overflow: hidden;
+        }
+
+        .video-container video {
+            max-height: 250px;
+            width: 100%;
+            object-fit: cover;
+        }
+
+        /* Glass effect for containers */
+        .glass {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .upload-interface, .video-interface {
+            margin: 10px 0;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+        }
+
+        .upload-interface input[type="file"] {
+            margin: 10px 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        .upload-interface button, .video-interface button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.9) 0%, rgba(118, 75, 162, 0.9) 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .upload-interface button:hover, .video-interface button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        #video-preview {
+            width: 100%;
+            max-width: 320px;
+            margin: 10px 0;
+            background: #000;
+            border-radius: 10px;
+        }
+
+        #record-button.recording {
+            background: linear-gradient(135deg, rgba(220, 53, 69, 0.9) 0%, rgba(178, 34, 48, 0.9) 100%);
+        }
+    </style>
+</head>
+<body class="min-h-screen overflow-hidden">
+    <div id="background"></div>
+    
+    <div class="container mx-auto px-4 h-screen flex items-center justify-center">
+        <div class="w-full max-w-4xl">
+            <div class="glass rounded-xl shadow-2xl overflow-hidden">
+                <div class="bg-gradient-to-r from-blue-600/90 to-indigo-600/90 p-6">
+                    <h3 class="text-2xl font-bold text-white mb-0">RecruitEase Chatbot</h3>
+                    <p class="text-blue-100 text-sm">Your AI Recruitment Assistant</p>
+                </div>
+                
+                <div class="p-6 overflow-y-auto max-h-[90vh]">
+                    <div id="chat-messages" class="chat-container mb-6 p-4 rounded-lg glass">
+                        <!-- Messages will be added here -->
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <input type="text" id="user-input" 
+                               class="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-transparent outline-none glass"
+                               placeholder="Type your message...">
+                        <button id="send-button" 
+                                class="px-6 py-3 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white rounded-lg hover:from-blue-700/90 hover:to-indigo-700/90 transition-colors duration-200">
+                            Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script type="module" src="{{ url_for('static', filename='js/background.js') }}"></script>
+    <script>
+        let mediaRecorder;
+        let recordedChunks = [];
+        let mediaStream;
+
+        async function startRecording() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                const videoElement = document.getElementById('videoPreview');
+                videoElement.srcObject = mediaStream;
+                videoElement.play();
+
+                mediaRecorder = new MediaRecorder(mediaStream);
+                recordedChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.start();
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                alert('Failed to start recording. Please ensure you have granted camera and microphone permissions.');
+            }
+        }
+
+        function stopRecording() {
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    await uploadVideo(blob);
+                    cleanupMediaStream();
+                };
+            }
+        }
+
+        function cleanupMediaStream() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                mediaStream = null;
+            }
+            const videoElement = document.getElementById('videoPreview');
+            if (videoElement) {
+                videoElement.srcObject = null;
+            }
+        }
+
+        async function uploadVideo(blob) {
+            const formData = new FormData();
+            formData.append('video', blob, 'recording.webm');
+
+            try {
+                const response = await fetch('/api/upload-video', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+                
+                if (data.stopRecording) {
+                    cleanupMediaStream();
+                }
+                
+                if (data.error) {
+                    alert(data.error);
+                }
+            } catch (error) {
+                console.error('Error uploading video:', error);
+                alert('Failed to upload video. Please try again.');
+                cleanupMediaStream();
+            }
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+            
+            if (message === '') return;
+            
+            appendMessage('user', message);
+            messageInput.value = '';
+            
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message })
+                });
+                
+                const data = await response.json();
+                
+                if (data.stopRecording) {
+                    cleanupMediaStream();
+                }
+                
+                appendMessage('bot', data.response);
+                
+                if (data.completed) {
+                    messageInput.disabled = true;
+                    document.getElementById('sendButton').disabled = true;
+                }
+            } catch (error) {
+                console.error('Error sending message:', error);
+                appendMessage('bot', 'Sorry, there was an error processing your message. Please try again.');
+                cleanupMediaStream();
+            }
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
