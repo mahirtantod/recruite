@@ -1,20 +1,49 @@
-from flask import Blueprint, render_template, request, jsonify, current_app, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, current_app, session, redirect, url_for, send_from_directory
 from app.models import db, Candidate, Job
 import os
 from werkzeug.utils import secure_filename
 import re
 from datetime import datetime
+import logging
 
-main = Blueprint('main', __name__)
+# Set up logging
+logger = logging.getLogger(__name__)
 
 ALLOWED_RESUME_EXTENSIONS = {'pdf', 'doc', 'docx'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov'}
 
-def allowed_resume_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_RESUME_EXTENSIONS
+def allowed_file(filename, allowed_extensions):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in allowed_extensions
 
-def allowed_video_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_VIDEO_EXTENSIONS
+def save_file(file, subfolder):
+    if file:
+        try:
+            # Get the current timestamp
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            
+            # Secure the filename and add timestamp
+            filename = secure_filename(file.filename)
+            filename = f"{timestamp}_{filename}"
+            
+            # Create the full path
+            upload_folder = current_app.config['UPLOAD_FOLDER']
+            subfolder_path = os.path.join(upload_folder, subfolder)
+            
+            # Ensure the directory exists
+            os.makedirs(subfolder_path, exist_ok=True)
+            
+            # Save the file
+            file_path = os.path.join(subfolder_path, filename)
+            file.save(file_path)
+            logger.info(f"File saved successfully at: {file_path}")
+            
+            return filename
+        except Exception as e:
+            logger.error(f"Error saving file: {str(e)}")
+            return None
+    return None
+
+main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
@@ -24,92 +53,101 @@ def index():
 @main.route('/apply/<link_hash>')
 def apply(link_hash):
     """Handle job-specific application"""
-    print(f"Accessing job with link_hash: {link_hash}")  # Debug log
-    
-    job = Job.query.filter_by(link_hash=link_hash).first_or_404()
-    print(f"Found job: {job.id} - {job.title}")  # Debug log
-    
-    if job.is_expired():
-        return render_template('expired.html')
-    
-    if not job.is_active:
-        return render_template('inactive.html')
-    
-    # Store job_id in session
-    session['job_id'] = job.id
-    print(f"Stored job_id in session: {job.id}")  # Debug log
-    
-    session['state'] = 'initial'
-    session['candidate_data'] = {}
-    
-    return render_template('index.html', job=job)
+    try:
+        logger.info(f"Accessing job with link_hash: {link_hash}")
+        
+        job = Job.query.filter_by(link_hash=link_hash).first()
+        if not job:
+            logger.error(f"No job found with link_hash: {link_hash}")
+            return render_template('error.html', message="Job not found"), 404
+            
+        logger.info(f"Found job: {job.id} - {job.title}")
+        
+        if job.is_expired():
+            logger.info(f"Job {job.id} has expired")
+            return render_template('expired.html')
+        
+        if not job.is_active:
+            logger.info(f"Job {job.id} is inactive")
+            return render_template('inactive.html')
+        
+        # Store job_id in session
+        session['job_id'] = job.id
+        session['state'] = 'initial'
+        session['candidate_data'] = {}
+        
+        logger.info(f"Session initialized for job {job.id}")
+        return render_template('index.html', job=job)
+        
+    except Exception as e:
+        logger.error(f"Error in apply route: {str(e)}")
+        return render_template('error.html', message="An error occurred. Please try again later."), 500
 
 @main.route('/api/upload-resume', methods=['POST'])
 def upload_resume():
-    if 'resume' not in request.files:
-        return jsonify({'error': 'No file provided'})
-    
-    file = request.files['resume']
-    if file.filename == '':
-        return jsonify({'error': 'No file selected'})
-    
-    if not allowed_resume_file(file.filename):
-        return jsonify({'error': 'Invalid file type. Please upload PDF or DOC files only.'})
-    
     try:
-        filename = secure_filename(f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{file.filename}")
-        resume_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'resumes')
-        file.save(os.path.join(resume_folder, filename))
+        if 'resume' not in request.files:
+            return jsonify({'error': 'No resume file provided'}), 400
         
-        # Store the filename in session with the resumes/ prefix
-        candidate_data = session.get('candidate_data', {})
-        candidate_data['resume_attachments'] = os.path.join('resumes', filename)
-        session['candidate_data'] = candidate_data
+        file = request.files['resume']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
         
-        return jsonify({'message': 'Resume uploaded successfully'})
+        if not allowed_file(file.filename, ALLOWED_RESUME_EXTENSIONS):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        filename = save_file(file, 'resumes')
+        if filename:
+            # Store the filename in session with the resumes/ prefix
+            candidate_data = session.get('candidate_data', {})
+            candidate_data['resume_attachments'] = os.path.join('resumes', filename)
+            session['candidate_data'] = candidate_data
+            return jsonify({'message': 'Resume uploaded successfully'}), 200
+        else:
+            return jsonify({'error': 'Error saving file'}), 500
+            
     except Exception as e:
-        return jsonify({'error': f'Error uploading resume: {str(e)}'})
+        logger.error(f"Error uploading resume: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 @main.route('/api/upload-video', methods=['POST'])
 def upload_video():
-    if 'video' not in request.files:
-        return jsonify({
-            'error': 'No file provided',
-            'stopRecording': True
-        })
-    
-    file = request.files['video']
-    if file.filename == '':
-        return jsonify({
-            'error': 'No file selected',
-            'stopRecording': True
-        })
-    
-    if not allowed_video_file(file.filename):
-        return jsonify({
-            'error': 'Invalid file type. Please upload MP4 or WebM files only.',
-            'stopRecording': True
-        })
-    
     try:
-        filename = secure_filename(f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_recording.webm")
-        video_folder = os.path.join(current_app.config['UPLOAD_FOLDER'], 'videos')
-        file.save(os.path.join(video_folder, filename))
+        if 'video' not in request.files:
+            return jsonify({'error': 'No video file provided'}), 400
         
-        # Store the filename in session with the videos/ prefix
-        candidate_data = session.get('candidate_data', {})
-        candidate_data['self_introduction_video'] = os.path.join('videos', filename)
-        session['candidate_data'] = candidate_data
+        file = request.files['video']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
         
-        return jsonify({
-            'message': 'Video uploaded successfully',
-            'stopRecording': True
-        })
+        if not allowed_file(file.filename, ALLOWED_VIDEO_EXTENSIONS):
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        filename = save_file(file, 'videos')
+        if filename:
+            # Store the filename in session with the videos/ prefix
+            candidate_data = session.get('candidate_data', {})
+            candidate_data['self_introduction_video'] = os.path.join('videos', filename)
+            session['candidate_data'] = candidate_data
+            return jsonify({'message': 'Video uploaded successfully'}), 200
+        else:
+            return jsonify({'error': 'Error saving file'}), 500
+            
     except Exception as e:
-        return jsonify({
-            'error': f'Error uploading video: {str(e)}',
-            'stopRecording': True
-        })
+        logger.error(f"Error uploading video: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+@main.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    try:
+        directory = os.path.dirname(filename)
+        file_name = os.path.basename(filename)
+        upload_path = os.path.join(current_app.config['UPLOAD_FOLDER'], directory)
+        logger.info(f"Serving file: {file_name} from directory: {upload_path}")
+        return send_from_directory(upload_path, file_name)
+    except Exception as e:
+        logger.error(f"Error serving file {filename}: {str(e)}")
+        return jsonify({'error': 'File not found'}), 404
 
 @main.route('/api/chat', methods=['POST'])
 def chat():

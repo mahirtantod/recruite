@@ -126,6 +126,7 @@
     /* Custom scrollbar for better UX */
     .table-responsive::-webkit-scrollbar {
         height: 8px;
+        /* width: 8px; */
     }
 
     .table-responsive::-webkit-scrollbar-track {
@@ -154,7 +155,7 @@
 
     .dataTables_length select,
     .dataTables_filter input {
-        padding: 6px 10px;
+        padding: 6px 30px;
         border: 1px solid #dee2e6;
         border-radius: 4px;
         margin: 0 5px;
@@ -286,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
         order: [[1, 'desc']],
         language: {
             search: "Search jobs:",
-            lengthMenu: "Show _MENU_ jobs per page",
+            lengthMenu: "Show _MENU_   jobs per page",
             info: "Showing _START_ to _END_ of _TOTAL_ jobs",
             paginate: {
                 first: '<i class="fas fa-angle-double-left"></i>',

@@ -9,7 +9,8 @@
 }
 
 body {
-    background: linear-gradient(135deg, #768eef, #e8dcdc, #63ea92);
+    /* background: linear-gradient(135deg, #768eef, #e8dcdc, #63ea92); */
+    background: linear-gradient(135deg, #d4d4d072, #e8dcdc, #d4d4d072);
     min-height: 100vh;
     font-family: 'Poppins', sans-serif;
 }
@@ -217,4 +218,39 @@ input:checked + .toggle-slider {
 
 input:checked + .toggle-slider:before {
     transform: translateX(26px);
+}
+
+.btn-back-dashboard {
+    background: linear-gradient(135deg, #71f978 0%, #4CAF50 100%);
+    color: #fff;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 50px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(113, 249, 120, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-back-dashboard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(113, 249, 120, 0.4);
+    color: #fff;
+}
+
+.btn-back-dashboard:active {
+    transform: translateY(1px);
+    box-shadow: 0 2px 10px rgba(113, 249, 120, 0.2);
+}
+
+.btn-back-dashboard i {
+    margin-right: 8px;
+    transition: transform 0.3s ease;
+}
+
+.btn-back-dashboard:hover i {
+    transform: translateX(-4px);
 }
