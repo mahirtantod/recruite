@@ -178,12 +178,13 @@ def chat():
         print(f"Processing application for job: {job.id} - {job.title}")  # Debug log
 
         if state == 'initial':
-            # Create a dummy job if none exists
-            job = Job.query.first()
+            # Get the job from session
+            job = Job.query.get(job_id)
             if not job:
-                job = Job(title='Software Developer', description='Python Developer Position')
-                db.session.add(job)
-                db.session.commit()
+                return jsonify({
+                    'response': 'Invalid job. Please start over from the job application link.',
+                    'completed': False
+                })
             
             # Store job_id in session
             session['job_id'] = job.id
